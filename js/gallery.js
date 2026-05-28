@@ -38,6 +38,9 @@
   const FORM_PHOTO_SCALE_STRICT = 0.56;
   const TRAIL_MAX = 100;
   const TRAIL_MIN_SPEED = 28;
+  const BURST_MAX_PARTICLES = 520;
+  const BURST_MAX_PARTICLES_REDUCED = 220;
+  const BURST_MIN_HEAVY_PHOTOS = 5;
 
   let trails = [];
 
@@ -71,9 +74,11 @@
   let physicsRunning = false;
   /** null | { type: 'heart'|'letter', keyCode, char? } */
   let formationMode = null;
+  let formationBursting = false;
   let highRegularMode = false;
   let rulesBubbleLocked = false;
   let quoteIndex = 0;
+  let formationBurstCooldownUntil = 0;
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -331,6 +336,357 @@
     el.textContent = text;
     effectsLayer.appendChild(el);
     return el;
+  }
+
+  function getFormationDisplayChar() {
+    if (!formationMode) return '';
+    if (formationMode.type === 'heart') return '♥';
+    return formationMode.char || '';
+  }
+
+  function spawnSparkParticle(x, y, opts = {}) {
+    const el = document.createElement('div');
+    el.className = opts.className || 'burst-spark';
+    const size = opts.size ?? 6 + Math.random() * 8;
+    el.style.width = `${size}px`;
+    el.style.height = `${size}px`;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    if (opts.color) el.style.background = opts.color;
+    effectsLayer.appendChild(el);
+
+    const angle = opts.angle ?? Math.random() * Math.PI * 2;
+    const speed = opts.speed ?? 140 + Math.random() * 260;
+    return {
+      el,
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      rot: Math.random() * 360,
+      vr: (Math.random() - 0.5) * 900,
+      life: 1,
+      decay: opts.decay ?? 0.7 + Math.random() * 0.45,
+      gravity: opts.gravity ?? 220,
+      halfSize: size / 2,
+    };
+  }
+
+  function animateBurstParticles(particles, duration = 2000) {
+    const start = performance.now();
+
+    function frame(now) {
+      const t = (now - start) / duration;
+      if (t >= 1) {
+        particles.forEach((pt) => pt.el.remove());
+        return;
+      }
+      const dt = 0.016;
+      particles.forEach((pt) => {
+        pt.vy += pt.gravity * dt;
+        pt.x += pt.vx * dt;
+        pt.y += pt.vy * dt;
+        pt.vx *= 0.97;
+        pt.vy *= 0.97;
+        pt.rot += pt.vr * dt;
+        pt.life -= pt.decay * dt;
+        const opacity = Math.max(0, pt.life);
+        const half = pt.halfSize ?? (parseFloat(pt.el.style.width) / 2 || 4);
+        pt.el.style.transform =
+          `translate(${pt.x - half}px, ${pt.y - half}px) rotate(${pt.rot}deg) scale(${0.25 + opacity * 0.85})`;
+        pt.el.style.opacity = String(opacity);
+      });
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function getBurstBudget(photoCount) {
+    const count = Math.max(1, photoCount);
+    const factor = clamp(22 / count, reducedMotion ? 0.24 : 0.28, 1);
+    const shardCount = Math.max(4, Math.round((reducedMotion ? 8 : 20) * factor));
+    const sparkCount = Math.max(3, Math.round((reducedMotion ? 6 : 12) * factor));
+    const heartCount = Math.max(1, Math.round((reducedMotion ? 2 : 4) * factor));
+    const rays = Math.max(8, Math.round((reducedMotion ? 12 : 18) * factor));
+    const maxParticles = reducedMotion ? BURST_MAX_PARTICLES_REDUCED : BURST_MAX_PARTICLES;
+    const perPhoto = shardCount + sparkCount + heartCount;
+    const centerCost = rays + (reducedMotion ? 2 : 3);
+    const heavyCap = Math.max(
+      BURST_MIN_HEAVY_PHOTOS,
+      Math.floor((maxParticles - centerCost) / Math.max(perPhoto, 1))
+    );
+    return {
+      shardCount,
+      sparkCount,
+      heartCount,
+      rays,
+      heavyCap,
+      duration: reducedMotion ? 700 : 950,
+      centerDuration: reducedMotion ? 760 : 980,
+    };
+  }
+
+  function sampleHeavyPhotos(allPhotos, cap) {
+    if (allPhotos.length <= cap) return allPhotos.slice();
+    const arr = allPhotos.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr.slice(0, cap);
+  }
+
+  function spawnFormationPhotoBurst(x, y, imageUrl, budget) {
+    const particles = [];
+    const shardCount = budget?.shardCount ?? (reducedMotion ? 8 : 20);
+
+    for (let i = 0; i < shardCount; i++) {
+      const p = document.createElement('div');
+      p.className = 'firework-particle burst-shard';
+      const size = 7 + Math.random() * 16;
+      p.style.width = `${size}px`;
+      p.style.height = `${size}px`;
+      p.style.left = `${x}px`;
+      p.style.top = `${y}px`;
+      p.style.backgroundImage = `url(${imageUrl})`;
+      effectsLayer.appendChild(p);
+
+      const angle = (Math.PI * 2 * i) / shardCount + Math.random() * 0.5;
+      const speed = 65 + Math.random() * 120;
+      particles.push({
+        el: p,
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        rot: Math.random() * 360,
+        vr: (Math.random() - 0.5) * 960,
+        life: 1,
+        decay: 1.25 + Math.random() * 0.5,
+        gravity: 35,
+        halfSize: size / 2,
+      });
+    }
+
+    const sparkColors = [
+      'rgba(255, 170, 200, 0.95)',
+      'rgba(255, 220, 235, 0.9)',
+      'rgba(240, 200, 255, 0.85)',
+      'rgba(255, 200, 180, 0.9)',
+    ];
+    const sparkCount = budget?.sparkCount ?? (reducedMotion ? 6 : 12);
+    for (let i = 0; i < sparkCount; i++) {
+      particles.push(
+        spawnSparkParticle(x, y, {
+          color: sparkColors[i % sparkColors.length],
+          speed: 40 + Math.random() * 80,
+          size: 4 + Math.random() * 7,
+          decay: 1.35 + Math.random() * 0.55,
+          gravity: 28,
+        })
+      );
+    }
+
+    const heartCount = budget?.heartCount ?? (reducedMotion ? 2 : 4);
+    for (let i = 0; i < heartCount; i++) {
+      const h = document.createElement('div');
+      h.className = 'burst-heart';
+      h.textContent = '♥';
+      h.style.left = `${x}px`;
+      h.style.top = `${y}px`;
+      const heartSize = 9 + Math.random() * 9;
+      h.style.fontSize = `${heartSize}px`;
+      effectsLayer.appendChild(h);
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 35 + Math.random() * 70;
+      particles.push({
+        el: h,
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        rot: 0,
+        vr: (Math.random() - 0.5) * 400,
+        life: 1,
+        decay: 1.2 + Math.random() * 0.45,
+        gravity: 20,
+        halfSize: heartSize * 0.33,
+      });
+    }
+
+    animateBurstParticles(particles, budget?.duration ?? (reducedMotion ? 1200 : 1600));
+  }
+
+  function spawnCenterFormationBurst(cx, cy, bounds, budget) {
+    const span = bounds
+      ? Math.min(Math.max(bounds.width, bounds.height) * 0.95, Math.min(window.innerWidth, window.innerHeight) * 0.78)
+      : 120;
+
+    const flash = document.createElement('div');
+    flash.className = 'formation-burst-flash';
+    flash.style.left = `${cx}px`;
+    flash.style.top = `${cy}px`;
+    flash.style.width = `${span}px`;
+    flash.style.height = `${span}px`;
+    flash.style.marginLeft = `${-span / 2}px`;
+    flash.style.marginTop = `${-span / 2}px`;
+    effectsLayer.appendChild(flash);
+    setTimeout(() => flash.remove(), 700);
+
+    for (let i = 0; i < (reducedMotion ? 2 : 3); i++) {
+      const ring = document.createElement('div');
+      ring.className = 'formation-burst-ring';
+      ring.style.left = `${cx}px`;
+      ring.style.top = `${cy}px`;
+      const ringBase = Math.max(40, span * 0.18);
+      ring.style.width = `${ringBase}px`;
+      ring.style.height = `${ringBase}px`;
+      ring.style.marginLeft = `${-ringBase / 2}px`;
+      ring.style.marginTop = `${-ringBase / 2}px`;
+      ring.style.animationDelay = `${i * 0.12}s`;
+      effectsLayer.appendChild(ring);
+      setTimeout(() => ring.remove(), 900);
+    }
+
+    const particles = [];
+    const rays = budget?.rays ?? (reducedMotion ? 12 : 18);
+    for (let i = 0; i < rays; i++) {
+      particles.push(
+        spawnSparkParticle(cx, cy, {
+          angle: (Math.PI * 2 * i) / rays,
+          speed: 90 + Math.random() * 110,
+          size: 4 + Math.random() * 7,
+          decay: 1.2 + Math.random() * 0.45,
+          gravity: 26,
+        })
+      );
+    }
+    animateBurstParticles(particles, budget?.centerDuration ?? (reducedMotion ? 1000 : 1300));
+  }
+
+  function getFormationBounds() {
+    const sim = getSimPhotos();
+    const points = sim.map((p) => ({
+      x: p.formX ?? p.x,
+      y: p.formY ?? p.y,
+    }));
+
+    if (!points.length) {
+      const layout = getFormationLayout();
+      const fallback = Math.min(window.innerWidth, window.innerHeight) * 0.42;
+      return {
+        cx: layout.cx,
+        cy: layout.cy,
+        width: fallback,
+        height: fallback,
+      };
+    }
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    points.forEach((p) => {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
+    });
+
+    const pad = getBaseSize() * getCurrentFormScale() * 0.52;
+    const width = Math.max(maxX - minX + pad * 2, pad * 2);
+    const height = Math.max(maxY - minY + pad * 2, pad * 2);
+
+    return {
+      cx: (minX + maxX) / 2,
+      cy: (minY + maxY) / 2,
+      width,
+      height,
+    };
+  }
+
+  function showFormationGlyph(char, bounds, anchorX, anchorY) {
+    const wrap = document.createElement('div');
+    wrap.className = 'formation-glyph-wrap';
+    wrap.style.left = `${anchorX}px`;
+    wrap.style.top = `${anchorY}px`;
+    wrap.style.width = `${bounds.width}px`;
+    wrap.style.height = `${bounds.height}px`;
+
+    const el = document.createElement('div');
+    el.className = 'formation-glyph';
+    if (formationMode?.type === 'heart') el.classList.add('is-heart');
+    el.textContent = char;
+
+    const fontSize = Math.min(bounds.width * 0.88, bounds.height * 0.92);
+    el.style.fontSize = `${fontSize}px`;
+
+    wrap.appendChild(el);
+    wrap.setAttribute('aria-hidden', 'true');
+    effectsLayer.appendChild(wrap);
+
+    setTimeout(() => wrap.classList.add('fade-out'), 1400);
+    setTimeout(() => wrap.remove(), 2100);
+    return wrap;
+  }
+
+  function explodeFormationShape(anchorX, anchorY) {
+    if (!isFormationActive() || formationBursting) return;
+    if (Date.now() < formationBurstCooldownUntil) return;
+
+    formationBursting = true;
+    formationBurstCooldownUntil = Date.now() + 2400;
+
+    const bounds = getFormationBounds();
+    const displayChar = getFormationDisplayChar();
+    const sim = getSimPhotos();
+    if (!sim.length) {
+      formationBursting = false;
+      return;
+    }
+    const budget = getBurstBudget(sim.length);
+    const burstX = typeof anchorX === 'number' ? anchorX : bounds.cx;
+    const burstY = typeof anchorY === 'number' ? anchorY : bounds.cy;
+
+    spawnCenterFormationBurst(burstX, burstY, bounds, budget);
+
+    const clones = sim.filter((p) => p.isClone);
+    const sources = sim.filter((p) => !p.isClone);
+    const heavyTargets = sampleHeavyPhotos(sources, budget.heavyCap);
+    const heavySet = new Set(heavyTargets);
+    const burstScatter = Math.min(bounds.width, bounds.height) * 0.09;
+
+    clones.forEach((p) => {
+      // 克隆只做轻量销毁，避免形状点位很多时卡顿
+      p.el.classList.add('is-exploding');
+      setTimeout(() => p.el.remove(), 60);
+    });
+    photos = photos.filter((p) => !clones.includes(p));
+
+    sources.forEach((p) => {
+      if (heavySet.has(p)) {
+        const jitterX = burstX + (Math.random() - 0.5) * burstScatter;
+        const jitterY = burstY + (Math.random() - 0.5) * burstScatter;
+        spawnFormationPhotoBurst(jitterX, jitterY, p.imageUrl, budget);
+      }
+      const dx = p.x - burstX;
+      const dy = p.y - burstY;
+      const dist = Math.hypot(dx, dy) || 1;
+      const speed = 300 + Math.random() * 340;
+      p.vx = (dx / dist) * speed + (Math.random() - 0.5) * 100;
+      p.vy = (dy / dist) * speed + (Math.random() - 0.5) * 100;
+      p.va = (Math.random() - 0.5) * 520;
+      p.scale = 1;
+      p.angle += (Math.random() - 0.5) * 40;
+    });
+
+    showFormationGlyph(displayChar, bounds, burstX, burstY);
+
+    setTimeout(() => {
+      formationBursting = false;
+      if (isFormationActive()) prepareFormation();
+    }, 2200);
   }
 
   function spawnFireworks(x, y, imageUrl) {
@@ -720,7 +1076,8 @@
   }
 
   function physicsStep(dt) {
-    if (isFormationActive()) formationPhysicsStep(dt);
+    if (formationBursting) freePhysicsStep(dt);
+    else if (isFormationActive()) formationPhysicsStep(dt);
     else freePhysicsStep(dt);
   }
 
@@ -888,13 +1245,36 @@
   }
 
   function isDigitKey(code) {
-    return code.length === 6 && code >= 'Digit0' && code <= 'Digit9';
+    if (!code) return false;
+    return (
+      (code.length === 6 && code >= 'Digit0' && code <= 'Digit9') ||
+      (code.length === 7 && code >= 'Numpad0' && code <= 'Numpad9')
+    );
   }
 
   function getShapeCharFromEvent(e) {
     if (isLetterKey(e.code)) return e.key.toUpperCase();
     if (isDigitKey(e.code)) return e.code.slice(-1);
+    if (/^[0-9]$/.test(e.key)) return e.key;
     return '';
+  }
+
+  function isShapeKeyEvent(e) {
+    return isLetterKey(e.code) || isDigitKey(e.code) || /^[0-9]$/.test(e.key);
+  }
+
+  function isMatchingFormationKey(e) {
+    if (!formationMode) return false;
+    if (e.code === formationMode.keyCode) return true;
+    if (formationMode.type === 'heart' && e.code === 'Space') return true;
+    const char = getShapeCharFromEvent(e);
+    return !!(char && formationMode.char === char);
+  }
+
+  function getFormationKeyCode(e, char) {
+    if (isLetterKey(e.code) || isDigitKey(e.code)) return e.code;
+    if (/^[0-9]$/.test(char)) return `Digit${char}`;
+    return e.code;
   }
 
   function bindInput() {
@@ -933,11 +1313,16 @@
         return;
       }
 
-      if (isLetterKey(e.code) || isDigitKey(e.code)) {
+      if (isShapeKeyEvent(e)) {
         e.preventDefault();
+        if (e.repeat) return;
         const char = getShapeCharFromEvent(e);
         if (!char) return;
-        setFormationMode({ type: 'letter', char, keyCode: e.code });
+        setFormationMode({
+          type: 'letter',
+          char,
+          keyCode: getFormationKeyCode(e, char),
+        });
       }
     });
 
@@ -948,13 +1333,26 @@
         return;
       }
 
-      if (!formationMode || e.code !== formationMode.keyCode) return;
+      if (!isMatchingFormationKey(e)) return;
       e.preventDefault();
       exitFormationMode();
     });
 
     window.addEventListener('blur', () => {
       if (formationMode) exitFormationMode();
+    });
+
+    document.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      if (!isFormationActive() || formationBursting) return;
+      if (
+        e.target.closest(
+          '.top-controls, .rules-modal, .photo-manage-modal, .intro-overlay, .btn-add-photo, .btn-remove-photo, .btn-rules'
+        )
+      ) {
+        return;
+      }
+      explodeFormationShape(e.clientX, e.clientY);
     });
   }
 
