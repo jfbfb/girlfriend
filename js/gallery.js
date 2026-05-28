@@ -10,6 +10,11 @@
   const introSkip = document.getElementById('introSkip');
   const addPhotoBtn = document.getElementById('addPhotoBtn');
   const addPhotoInput = document.getElementById('addPhotoInput');
+  const removePhotoBtn = document.getElementById('removePhotoBtn');
+  const photoManageModal = document.getElementById('photoManageModal');
+  const photoManageGrid = document.getElementById('photoManageGrid');
+  const photoManageEmpty = document.getElementById('photoManageEmpty');
+  const photoManageClose = document.getElementById('photoManageClose');
   const rulesBtn = document.getElementById('rulesBtn');
   const rulesBubble = document.getElementById('rulesBubble');
   const rulesModal = document.getElementById('rulesModal');
@@ -784,6 +789,100 @@
     rulesModal.hidden = true;
   }
 
+  function getStoredPhotos() {
+    return photos.filter((p) => !p.isClone && !p.exploding);
+  }
+
+  function isPhotoCloneOf(photo, sourceId) {
+    return photo.id === sourceId || (photo.isClone && photo.id.startsWith(`${sourceId}_clone`));
+  }
+
+  function removePhotoFromStage(id) {
+    if (isFormationActive()) exitFormationMode();
+
+    const toRemove = photos.filter((p) => isPhotoCloneOf(p, id));
+    const urlsToMaybeRevoke = new Set();
+
+    toRemove.forEach((p) => {
+      if (!p.isClone) urlsToMaybeRevoke.add(p.imageUrl);
+      p.el.remove();
+    });
+
+    photos = photos.filter((p) => !toRemove.includes(p));
+
+    urlsToMaybeRevoke.forEach((url) => {
+      if (!photos.some((p) => p.imageUrl === url)) {
+        URL.revokeObjectURL(url);
+        objectUrls = objectUrls.filter((u) => u !== url);
+      }
+    });
+  }
+
+  function renderPhotoManageGrid() {
+    if (!photoManageGrid || !photoManageEmpty) return;
+
+    const stored = getStoredPhotos();
+    photoManageGrid.innerHTML = '';
+    photoManageEmpty.hidden = stored.length > 0;
+    photoManageGrid.hidden = stored.length === 0;
+
+    stored.forEach((photo) => {
+      const item = document.createElement('div');
+      item.className = 'photo-manage-item';
+      item.dataset.id = photo.id;
+
+      const img = document.createElement('img');
+      img.src = photo.imageUrl;
+      img.alt = photo.name;
+      img.draggable = false;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'photo-manage-delete';
+      btn.setAttribute('aria-label', `删除 ${photo.name}`);
+      btn.textContent = '×';
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleDeletePhoto(photo.id, item);
+      });
+
+      item.appendChild(img);
+      item.appendChild(btn);
+      photoManageGrid.appendChild(item);
+    });
+  }
+
+  function openPhotoManageModal() {
+    if (!photoManageModal) return;
+    closeRulesModal();
+    renderPhotoManageGrid();
+    photoManageModal.hidden = false;
+  }
+
+  function closePhotoManageModal() {
+    if (!photoManageModal) return;
+    photoManageModal.hidden = true;
+  }
+
+  async function handleDeletePhoto(id, itemEl) {
+    try {
+      await deletePhoto(id);
+      removePhotoFromStage(id);
+      if (itemEl) {
+        itemEl.remove();
+      } else {
+        renderPhotoManageGrid();
+      }
+      if (!getStoredPhotos().length && photoManageEmpty && photoManageGrid) {
+        photoManageEmpty.hidden = false;
+        photoManageGrid.hidden = true;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('删除失败，请重试');
+    }
+  }
+
   function isLetterKey(code) {
     return code.length === 4 && code >= 'KeyA' && code <= 'KeyZ';
   }
@@ -907,6 +1006,27 @@
     addPhotoInput.click();
   });
 
+  if (removePhotoBtn) {
+    removePhotoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openPhotoManageModal();
+    });
+  }
+
+  if (photoManageClose) {
+    photoManageClose.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closePhotoManageModal();
+    });
+  }
+
+  if (photoManageModal) {
+    photoManageModal.addEventListener('click', (e) => {
+      if (e.target === photoManageModal) closePhotoManageModal();
+    });
+  }
+
   if (rulesBtn) {
     rulesBtn.addEventListener('mouseenter', () => {
       rulesBubbleLocked = true;
@@ -935,7 +1055,12 @@
     });
   }
   window.addEventListener('keydown', (e) => {
-    if (e.code === 'Escape' && rulesModal && !rulesModal.hidden) {
+    if (e.code !== 'Escape') return;
+    if (photoManageModal && !photoManageModal.hidden) {
+      closePhotoManageModal();
+      return;
+    }
+    if (rulesModal && !rulesModal.hidden) {
       closeRulesModal();
     }
   });

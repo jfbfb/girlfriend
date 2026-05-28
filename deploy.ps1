@@ -7,11 +7,20 @@ $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";
 
 Set-Location $PSScriptRoot
 
-function Invoke-Gh {
+function Test-GhLoggedIn {
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  gh auth status 2>&1 | Out-Null
+  $ok = ($LASTEXITCODE -eq 0)
+  $ErrorActionPreference = $prev
+  return $ok
+}
+
+function Invoke-GhQuiet {
   param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
   $prev = $ErrorActionPreference
   $ErrorActionPreference = "Continue"
-  & gh @Args
+  & gh @Args 2>&1 | Out-Null
   $code = $LASTEXITCODE
   $ErrorActionPreference = $prev
   return $code
@@ -21,12 +30,10 @@ Write-Host ""
 Write-Host "=== GitHub Pages Deploy ===" -ForegroundColor Magenta
 Write-Host ""
 
-$loggedIn = $true
-if ((Invoke-Gh auth status) -ne 0) { $loggedIn = $false }
-
-if (-not $loggedIn) {
+if (-not (Test-GhLoggedIn)) {
   Write-Host "Please login to GitHub in the browser..." -ForegroundColor Yellow
-  if ((Invoke-Gh auth login --hostname github.com --git-protocol https --web) -ne 0) {
+  gh auth login --hostname github.com --git-protocol https --web
+  if ($LASTEXITCODE -ne 0) {
     Write-Host "Login failed." -ForegroundColor Red
     exit 1
   }
@@ -46,9 +53,9 @@ Write-Host "GitHub user: $username" -ForegroundColor Cyan
 Write-Host "Repository:  $repoName" -ForegroundColor Cyan
 Write-Host ""
 
-if ((Invoke-Gh repo view $repoFull) -ne 0) {
+if ((Invoke-GhQuiet repo view $repoFull) -ne 0) {
   Write-Host "Creating public repo $repoFull ..." -ForegroundColor Yellow
-  if ((Invoke-Gh repo create $repoName --public --description "Couple love gallery website") -ne 0) {
+  if ((Invoke-GhQuiet repo create $repoName --public --description "Couple love gallery website") -ne 0) {
     Write-Host "Failed to create repository." -ForegroundColor Red
     exit 1
   }
@@ -71,20 +78,16 @@ if ($LASTEXITCODE -ne 0) {
   exit 1
 }
 
-Write-Host "Enabling GitHub Pages ..." -ForegroundColor Yellow
+Write-Host "Checking GitHub Pages ..." -ForegroundColor Yellow
 $pagesEnabled = $false
-if ((Invoke-Gh api repos/$repoFull/pages) -eq 0) {
+if ((Invoke-GhQuiet api repos/$repoFull/pages) -eq 0) {
   $pagesEnabled = $true
-} else {
-  if ((Invoke-Gh api --method POST repos/$repoFull/pages -f build_type=workflow) -eq 0) {
-    $pagesEnabled = $true
-  }
+} elseif ((Invoke-GhQuiet api --method POST repos/$repoFull/pages -f build_type=workflow) -eq 0) {
+  $pagesEnabled = $true
 }
 
 if (-not $pagesEnabled) {
-  Write-Host "Pages API setup skipped. Enable manually:" -ForegroundColor Yellow
-  Write-Host "  https://github.com/$repoFull/settings/pages" -ForegroundColor Yellow
-  Write-Host "  Source -> GitHub Actions" -ForegroundColor Yellow
+  Write-Host "Pages already enabled or setup skipped." -ForegroundColor Yellow
 }
 
 Write-Host ""

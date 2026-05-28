@@ -89,6 +89,18 @@ async function savePhotos(files) {
   });
 }
 
+/** 按 id 删除单张照片 */
+async function deletePhoto(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.delete(id);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 /** 读取全部照片，按 order 排序 */
 async function loadPhotos() {
   const db = await openDB();

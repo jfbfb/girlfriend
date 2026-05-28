@@ -721,6 +721,35 @@ body {
   transform: scale(0.95);
 }
 
+.btn-remove-photo {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--rose-deep);
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft), 0 0 20px rgba(230, 160, 185, 0.15);
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+  font-family: var(--font-body);
+}
+
+.btn-remove-photo:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.08);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-remove-photo:active {
+  transform: scale(0.95);
+}
+
 .btn-rules {
   width: 42px;
   height: 28px;
@@ -781,6 +810,120 @@ body {
 
 .rules-modal[hidden] {
   display: none !important;
+}
+
+.photo-manage-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(255, 245, 248, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.photo-manage-modal[hidden] {
+  display: none !important;
+}
+
+.photo-manage-card {
+  width: min(92vw, 520px);
+  max-height: min(80vh, 640px);
+  overflow: auto;
+  padding: 28px 24px 22px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  box-shadow: var(--shadow-glow);
+  text-align: center;
+}
+
+.photo-manage-card h2 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--text-heading);
+}
+
+.photo-manage-hint {
+  margin: 0 0 18px;
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  color: var(--text-accent);
+}
+
+.photo-manage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.photo-manage-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.photo-manage-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-manage-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(90, 50, 60, 0.72);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.photo-manage-delete:hover {
+  background: rgba(120, 60, 75, 0.88);
+  transform: scale(1.08);
+}
+
+.photo-manage-empty {
+  margin: 0 0 18px;
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.photo-manage-close {
+  min-width: 120px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--rose-soft), var(--rose));
+  color: #fff;
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.photo-manage-close:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow);
 }
 
 .rules-card {
@@ -932,6 +1075,12 @@ body {
     width: 38px;
     height: 38px;
     font-size: 20px;
+  }
+
+  .btn-remove-photo {
+    width: 38px;
+    height: 38px;
+    font-size: 22px;
   }
 
   .top-controls {
