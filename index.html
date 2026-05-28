@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>把我们的瞬间 · 藏进温柔里</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+XiaoWei&family=Noto+Serif+SC:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-upload">
+  <!-- 背景装饰层 -->
+  <div class="decor-layer" aria-hidden="true">
+    <div class="dream-glow"></div>
+    <div class="bokeh"></div>
+    <div class="mist"></div>
+    <div class="stars"></div>
+    <div class="floating-hearts">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="heart-rain"></div>
+    <div class="petals"></div>
+    <div class="romance-vignette"></div>
+  </div>
+
+  <main class="upload-container">
+    <header class="upload-header">
+      <h1>把我们的瞬间，藏进一片温柔里</h1>
+      <p class="subtitle">选几张你们的照片，一起放进这片小小的浪漫里</p>
+    </header>
+
+    <!-- 拖拽 / 点击上传区 -->
+    <label class="drop-zone" id="dropZone" for="fileInput">
+      <span class="drop-icon" aria-hidden="true"></span>
+      <span class="drop-text">点击或拖拽，放入你们的照片</span>
+      <span class="drop-hint">支持多选 · 仅存于本机</span>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden>
+    </label>
+
+    <!-- 已选预览 -->
+    <section class="preview-section" id="previewSection" hidden>
+      <p class="preview-count" id="previewCount"></p>
+      <div class="preview-grid" id="previewGrid"></div>
+    </section>
+
+    <footer class="upload-actions">
+      <button type="button" class="btn-primary" id="confirmBtn" disabled>准备好了</button>
+      <a href="gallery.html" class="link-secondary" id="continueLink" hidden>先看看上次的回忆 →</a>
+    </footer>
+  </main>
+
+  <script src="js/heart-rain.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
