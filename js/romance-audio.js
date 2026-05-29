@@ -3,6 +3,12 @@
  */
 (function (global) {
   const STORAGE_KEY = 'girlfriend-sound-enabled';
+  const BGM_SOURCES = [
+    'audio/周杰伦 - 晴天.ogg',
+    'audio/qingtian.mp3',
+    'audio/qingtian.m4a',
+  ];
+  const BGM_VOLUME = 0.36;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const RomanceAudio = {
@@ -13,6 +19,10 @@
     volumeScale: reducedMotion ? 0.55 : 1,
     lastAt: {},
     wind: null,
+    bgm: null,
+    bgmReady: false,
+    bgmMissing: false,
+    bgmStarted: false,
 
     init() {
       try {
@@ -21,9 +31,39 @@
       } catch (_) {
         /* ignore */
       }
+      this._initBGM();
       this._bindUnlock();
       this._bindToggleButtons();
       this._syncToggleButtons();
+    },
+
+    _initBGM() {
+      const audio = new Audio();
+      audio.loop = true;
+      audio.preload = 'auto';
+      audio.volume = BGM_VOLUME * this.volumeScale;
+      this.bgm = audio;
+
+      let sourceIdx = 0;
+      const loadSource = () => {
+        if (sourceIdx >= BGM_SOURCES.length) {
+          this.bgmMissing = true;
+          return;
+        }
+        audio.src = encodeURI(BGM_SOURCES[sourceIdx]);
+        sourceIdx += 1;
+        audio.load();
+      };
+
+      audio.addEventListener('canplaythrough', () => {
+        this.bgmReady = true;
+      });
+
+      audio.addEventListener('error', () => {
+        loadSource();
+      });
+
+      loadSource();
     },
 
     isEnabled() {
@@ -37,7 +77,12 @@
       } catch (_) {
         /* ignore */
       }
-      if (!this.enabled) this.stopShockwaveWind();
+      if (!this.enabled) {
+        this.stopShockwaveWind();
+        this.pauseBGM();
+      } else {
+        this.startBGM();
+      }
       this._syncToggleButtons();
     },
 
@@ -47,6 +92,25 @@
         this.unlock();
         this.playUiClick();
       }
+    },
+
+    startBGM() {
+      if (!this.enabled || this.bgmMissing || !this.bgm) return;
+      this.bgm.volume = BGM_VOLUME * this.volumeScale;
+
+      const playPromise = this.bgm.play();
+      if (!playPromise) return;
+
+      playPromise
+        .then(() => {
+          this.bgmStarted = true;
+        })
+        .catch(() => {});
+    },
+
+    pauseBGM() {
+      if (!this.bgm) return;
+      this.bgm.pause();
     },
 
     unlock() {
@@ -68,6 +132,7 @@
     _bindUnlock() {
       const unlockOnce = () => {
         this.unlock();
+        this.startBGM();
         ['pointerdown', 'keydown', 'touchstart'].forEach((evt) => {
           global.removeEventListener(evt, unlockOnce, true);
         });
@@ -91,8 +156,8 @@
       global.document.querySelectorAll('[data-sound-toggle]').forEach((btn) => {
         const on = this.enabled;
         btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        btn.setAttribute('title', on ? '关闭音效' : '开启音效');
-        btn.setAttribute('aria-label', on ? '关闭音效' : '开启音效');
+        btn.setAttribute('title', on ? '关闭音效与音乐' : '开启音效与音乐');
+        btn.setAttribute('aria-label', on ? '关闭音效与音乐' : '开启音效与音乐');
         btn.textContent = on ? '♪' : '♪̸';
         btn.classList.toggle('is-muted', !on);
       });

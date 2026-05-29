@@ -706,6 +706,87 @@ body {
   color: var(--rose-deep);
 }
 
+.music-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(40, 20, 30, 0.42);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: musicGateIn 0.55s ease;
+}
+
+.music-gate.fade-out {
+  animation: musicGateOut 0.55s ease forwards;
+}
+
+.music-gate-card {
+  width: min(92vw, 360px);
+  padding: 36px 28px 32px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  background: linear-gradient(165deg, rgba(255, 252, 250, 0.96), rgba(255, 236, 244, 0.92));
+  box-shadow: var(--shadow-glow);
+  text-align: center;
+}
+
+.music-gate-kicker {
+  font-family: var(--font-serif);
+  font-size: 0.88rem;
+  color: var(--text-accent);
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+}
+
+.music-gate-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--text-heading);
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.music-gate-artist {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  color: var(--text-soft);
+  margin-bottom: 28px;
+}
+
+.music-gate-btn {
+  display: inline-block;
+  padding: 12px 28px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  background: linear-gradient(145deg, rgba(255, 252, 250, 0.98), rgba(255, 228, 238, 0.92));
+  color: var(--text-heading);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+
+.music-gate-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow);
+}
+
+@keyframes musicGateIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes musicGateOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 .top-controls {
   position: fixed;
   top: 20px;

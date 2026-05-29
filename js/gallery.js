@@ -133,7 +133,6 @@
   function dismissIntro() {
     if (introDone) return;
     introDone = true;
-    if (window.RomanceAudio) window.RomanceAudio.playIntro();
     if (!photos.length) {
       introOverlay.hidden = true;
       return;
