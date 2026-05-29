@@ -573,6 +573,236 @@ body {
 .page-gallery {
   overflow: hidden;
   height: 100vh;
+  height: 100dvh;
+  padding-bottom: var(--vk-height, 0px);
+  transition: padding-bottom 0.32s ease;
+}
+
+.page-gallery.has-virtual-keyboard .top-controls {
+  bottom: calc(12px + var(--vk-height, 0px));
+  top: auto;
+}
+
+/* ===== 手机虚拟键盘 ===== */
+.virtual-keyboard {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 35;
+  pointer-events: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.82);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 248, 252, 0.72) 0%,
+    rgba(255, 236, 244, 0.94) 42%,
+    rgba(245, 228, 240, 0.97) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 -8px 32px rgba(160, 100, 120, 0.14),
+    0 -2px 0 rgba(255, 255, 255, 0.65) inset;
+}
+
+.virtual-keyboard[hidden] {
+  display: none !important;
+}
+
+.virtual-keyboard.is-collapsed .vk-body {
+  display: none;
+}
+
+.vk-handle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px 6px;
+}
+
+.vk-handle-title {
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  color: var(--text-accent);
+}
+
+.vk-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: rgba(255, 252, 250, 0.88);
+  color: var(--rose-deep);
+  font-family: var(--font-serif);
+  font-size: 0.72rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+}
+
+.vk-body {
+  padding: 0 10px 10px;
+  max-height: min(46vh, 360px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vk-quick-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.vk-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.vk-tab {
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 12px;
+  padding: 7px 0;
+  background: rgba(255, 252, 250, 0.65);
+  color: var(--text-soft);
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.vk-tab.is-active {
+  color: var(--text-heading);
+  background: linear-gradient(145deg, rgba(255, 252, 250, 0.98), rgba(255, 228, 238, 0.92));
+  box-shadow: var(--shadow-soft), 0 0 16px rgba(230, 160, 185, 0.18);
+}
+
+.vk-panels {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.vk-panel[hidden] {
+  display: none !important;
+}
+
+.vk-alpha-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.vk-digit-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.vk-arrow-pad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(44px, auto));
+  gap: 8px;
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+.vk-key-arrow.vk-arrow-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.vk-key-arrow.vk-arrow-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.vk-key-arrow.vk-arrow-down {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.vk-key-arrow.vk-arrow-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.vk-key {
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 11px;
+  background: linear-gradient(160deg, rgba(255, 252, 250, 0.96), rgba(255, 238, 245, 0.88));
+  color: var(--text-heading);
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  line-height: 1;
+  min-height: 38px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  box-shadow:
+    0 2px 8px rgba(160, 100, 120, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.35) inset;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.vk-key-alpha,
+.vk-key-digit {
+  min-height: 34px;
+  font-size: 0.74rem;
+  padding: 0;
+}
+
+.vk-key-heart {
+  font-size: 1.15rem;
+  color: #c95d82;
+  min-height: 42px;
+}
+
+.vk-key-burst {
+  font-size: 1rem;
+  color: #b84a70;
+  min-height: 42px;
+}
+
+.vk-key-shift {
+  font-size: 1rem;
+  min-height: 42px;
+}
+
+.vk-key-arrow {
+  min-height: 46px;
+  font-size: 1.1rem;
+}
+
+.vk-key.is-held,
+.vk-key:active {
+  transform: scale(0.94);
+  background: linear-gradient(160deg, rgba(255, 220, 234, 0.98), rgba(255, 190, 215, 0.9));
+  box-shadow:
+    0 0 14px rgba(230, 140, 175, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+}
+
+.vk-key-shift.is-active {
+  background: linear-gradient(160deg, rgba(255, 210, 228, 0.98), rgba(240, 170, 200, 0.92));
+  color: #8f3f5e;
+  box-shadow: 0 0 16px rgba(220, 130, 165, 0.32);
+}
+
+.vk-hint {
+  font-family: var(--font-serif);
+  font-size: 0.65rem;
+  line-height: 1.45;
+  color: var(--text-accent);
+  text-align: center;
+  opacity: 0.88;
+  padding: 0 4px;
 }
 
 .gallery-stage {

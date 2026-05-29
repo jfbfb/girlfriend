@@ -75,6 +75,7 @@
   let prevMouseY = mouseY;
   let mouseVx = 0;
   let mouseVy = 0;
+  let pointerPushing = false;
   let time = 0;
   let animId = null;
   let introDone = false;
@@ -981,6 +982,7 @@
 
   function resolveMouseCollision(p) {
     if (isFormationActive()) return;
+    if (!pointerPushing) return;
 
     const dx = p.x - mouseX;
     const dy = p.y - mouseY;
@@ -1563,6 +1565,83 @@
     return e.code;
   }
 
+  function handleGalleryKeyDown(e) {
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+      highRegularMode = true;
+      if (isFormationActive()) prepareFormation();
+      return;
+    }
+
+    const arrowDir = ARROW_DIRECTIONS[e.code];
+    if (arrowDir) {
+      if (e.preventDefault) e.preventDefault();
+      beginShockwaveHold(arrowDir);
+      return;
+    }
+
+    if (e.repeat) return;
+
+    if (e.code === 'Space') {
+      if (e.preventDefault) e.preventDefault();
+      setFormationMode({ type: 'heart', keyCode: 'Space' });
+      return;
+    }
+
+    if (isShapeKeyEvent(e)) {
+      if (e.preventDefault) e.preventDefault();
+      if (e.repeat) return;
+      const char = getShapeCharFromEvent(e);
+      if (!char) return;
+      setFormationMode({
+        type: 'letter',
+        char,
+        keyCode: getFormationKeyCode(e, char),
+      });
+    }
+  }
+
+  function handleGalleryKeyUp(e) {
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+      highRegularMode = false;
+      if (isFormationActive()) prepareFormation();
+      return;
+    }
+
+    const arrowDir = ARROW_DIRECTIONS[e.code];
+    if (arrowDir) {
+      if (e.preventDefault) e.preventDefault();
+      if (shockwaveHoldDir === arrowDir) endShockwaveHold();
+      return;
+    }
+
+    if (!isMatchingFormationKey(e)) return;
+    if (e.preventDefault) e.preventDefault();
+    exitFormationMode();
+  }
+
+  function triggerFormationBurstAtCenter() {
+    if (!isFormationActive() || formationBursting) return;
+    explodeFormationShape(window.innerWidth / 2, window.innerHeight / 2);
+  }
+
+  function isGalleryInteractionBlocked(target) {
+    return !!target.closest(
+      '.top-controls, .rules-modal, .photo-manage-modal, .intro-overlay, .virtual-keyboard, .btn-add-photo, .btn-remove-photo, .btn-rules, .btn-sound-toggle'
+    );
+  }
+
+  window.GalleryInput = {
+    keyDown(code, key) {
+      handleGalleryKeyDown({ code, key: key || code, preventDefault() {}, repeat: false });
+    },
+    keyUp(code, key) {
+      handleGalleryKeyUp({ code, key: key || code, preventDefault() {}, repeat: false });
+    },
+    burstFormation: triggerFormationBurstAtCenter,
+    isShiftActive: () => highRegularMode,
+    isFormationActive,
+  };
+
   function bindUiSounds() {
     if (!window.RomanceAudio) return;
     document.querySelectorAll(
@@ -1590,80 +1669,55 @@
       if (e.touches.length) {
         mouseX = e.touches[0].clientX;
         mouseY = e.touches[0].clientY;
+        if (!isGalleryInteractionBlocked(e.target)) {
+          pointerPushing = true;
+        }
       }
     }, { passive: true });
 
+    document.addEventListener('touchend', (e) => {
+      if (!e.touches.length) pointerPushing = false;
+    }, { passive: true });
+
+    document.addEventListener('touchcancel', () => {
+      pointerPushing = false;
+    }, { passive: true });
+
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 0) pointerPushing = false;
+    });
+
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        highRegularMode = true;
-        if (isFormationActive()) prepareFormation();
-        return;
-      }
-
-      const arrowDir = ARROW_DIRECTIONS[e.code];
-      if (arrowDir) {
-        e.preventDefault();
-        beginShockwaveHold(arrowDir);
-        return;
-      }
-
-      if (e.repeat) return;
-
-      if (e.code === 'Space') {
-        e.preventDefault();
-        setFormationMode({ type: 'heart', keyCode: 'Space' });
-        return;
-      }
-
-      if (isShapeKeyEvent(e)) {
-        e.preventDefault();
-        if (e.repeat) return;
-        const char = getShapeCharFromEvent(e);
-        if (!char) return;
-        setFormationMode({
-          type: 'letter',
-          char,
-          keyCode: getFormationKeyCode(e, char),
-        });
-      }
+      handleGalleryKeyDown(e);
     });
 
     window.addEventListener('keyup', (e) => {
-      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        highRegularMode = false;
-        if (isFormationActive()) prepareFormation();
-        return;
-      }
-
-      const arrowDir = ARROW_DIRECTIONS[e.code];
-      if (arrowDir) {
-        e.preventDefault();
-        if (shockwaveHoldDir === arrowDir) endShockwaveHold();
-        return;
-      }
-
-      if (!isMatchingFormationKey(e)) return;
-      e.preventDefault();
-      exitFormationMode();
+      handleGalleryKeyUp(e);
     });
 
     window.addEventListener('blur', () => {
+      pointerPushing = false;
       if (formationMode) exitFormationMode();
       endShockwaveHold();
     });
 
     document.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
-      if (!isFormationActive() || formationBursting) return;
-      if (
-        e.target.closest(
-          '.top-controls, .rules-modal, .photo-manage-modal, .intro-overlay, .btn-add-photo, .btn-remove-photo, .btn-rules'
-        )
-      ) {
-        return;
+      if (!isGalleryInteractionBlocked(e.target)) {
+        pointerPushing = true;
       }
+      if (!isFormationActive() || formationBursting) return;
+      if (isGalleryInteractionBlocked(e.target)) return;
       explodeFormationShape(e.clientX, e.clientY);
     });
+
+    document.addEventListener('touchstart', (e) => {
+      if (!isFormationActive() || formationBursting) return;
+      if (isGalleryInteractionBlocked(e.target)) return;
+      if (!e.changedTouches.length) return;
+      const t = e.changedTouches[0];
+      explodeFormationShape(t.clientX, t.clientY);
+    }, { passive: true });
   }
 
   function onResize() {
@@ -1799,6 +1853,8 @@
       introOverlay.hidden = true;
       introDone = true;
     }
+
+    if (window.VirtualKeyboard) window.VirtualKeyboard.init();
   }
 
   window.addEventListener('beforeunload', () => {
