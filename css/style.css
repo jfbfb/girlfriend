@@ -1070,6 +1070,451 @@ body {
   animation: formationRing 0.82s ease-out forwards;
 }
 
+/* ===== 方向键边缘冲击波 ===== */
+.edge-shockwave {
+  position: fixed;
+  pointer-events: none;
+  z-index: 22;
+  contain: layout style paint;
+}
+
+.edge-from-left {
+  left: 0;
+  top: 0;
+  width: min(36vw, 260px);
+  height: 100vh;
+}
+
+.edge-from-right {
+  right: 0;
+  top: 0;
+  width: min(36vw, 260px);
+  height: 100vh;
+}
+
+.edge-from-up {
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: min(36vh, 220px);
+}
+
+.edge-from-down {
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  height: min(36vh, 220px);
+}
+
+.edge-shockwave-sustain {
+  --sw-i: 0.35;
+}
+
+.edge-from-left.edge-shockwave-sustain,
+.edge-from-right.edge-shockwave-sustain {
+  width: min(calc(24vw + var(--sw-i) * 24vw), calc(180px + var(--sw-i) * 200px));
+}
+
+.edge-from-up.edge-shockwave-sustain,
+.edge-from-down.edge-shockwave-sustain {
+  height: min(calc(22vh + var(--sw-i) * 22vh), calc(160px + var(--sw-i) * 180px));
+}
+
+.edge-shockwave-sustain::before {
+  animation: none;
+  opacity: calc(0.18 + var(--sw-i) * 0.78);
+}
+
+.edge-from-left.edge-shockwave-sustain::before,
+.edge-from-right.edge-shockwave-sustain::before {
+  transform: scaleX(calc(0.38 + var(--sw-i) * 0.92)) scaleY(calc(0.92 + var(--sw-i) * 0.22));
+}
+
+.edge-from-up.edge-shockwave-sustain::before,
+.edge-from-down.edge-shockwave-sustain::before {
+  transform: scaleY(calc(0.38 + var(--sw-i) * 0.92)) scaleX(calc(0.92 + var(--sw-i) * 0.22));
+}
+
+.edge-shockwave-sustain.sw-intense::before {
+  filter: brightness(1.12) saturate(1.15);
+}
+
+.edge-shockwave-sustain.sw-max::before {
+  filter: brightness(1.22) saturate(1.28);
+}
+
+.edge-shockwave-sustain::after {
+  display: none;
+}
+
+.edge-shockwave-sustain-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 21;
+  opacity: var(--sw-i, 0);
+}
+
+.edge-shockwave-sustain-flash.edge-from-left {
+  background: linear-gradient(90deg, rgba(255, 120, 165, 0.34) 0%, transparent 50%);
+}
+
+.edge-shockwave-sustain-flash.edge-from-right {
+  background: linear-gradient(270deg, rgba(255, 120, 165, 0.34) 0%, transparent 50%);
+}
+
+.edge-shockwave-sustain-flash.edge-from-up {
+  background: linear-gradient(180deg, rgba(255, 120, 165, 0.34) 0%, transparent 50%);
+}
+
+.edge-shockwave-sustain-flash.edge-from-down {
+  background: linear-gradient(0deg, rgba(255, 120, 165, 0.34) 0%, transparent 50%);
+}
+
+.edge-shockwave-pulse {
+  --sw-pulse: 1;
+}
+
+.edge-shockwave-pulse::before {
+  animation-duration: calc(0.58s / var(--sw-pulse));
+}
+
+.edge-shockwave-pulse .edge-shockwave-ring {
+  animation-duration: calc(0.62s / var(--sw-pulse));
+  border-width: calc(1px + var(--sw-pulse) * 1.4px);
+}
+
+.edge-shockwave-pulse::after {
+  animation-duration: calc(0.42s / var(--sw-pulse));
+  animation-name: edgeShockFlashPulse;
+}
+
+@keyframes edgeShockFlashPulse {
+  0% { opacity: calc(0.35 + var(--sw-pulse) * 0.25); }
+  100% { opacity: 0; }
+}
+
+.edge-shockwave::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: edgeShockGlowX 0.58s ease-out forwards;
+}
+
+.edge-from-left::before {
+  transform-origin: left center;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 95, 145, 0.92) 0%,
+    rgba(255, 175, 205, 0.5) 36%,
+    transparent 100%
+  );
+}
+
+.edge-from-right::before {
+  transform-origin: right center;
+  background: linear-gradient(
+    270deg,
+    rgba(255, 95, 145, 0.92) 0%,
+    rgba(255, 175, 205, 0.5) 36%,
+    transparent 100%
+  );
+}
+
+.edge-from-up::before {
+  transform-origin: center top;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 95, 145, 0.92) 0%,
+    rgba(255, 175, 205, 0.5) 36%,
+    transparent 100%
+  );
+}
+
+.edge-from-down::before {
+  transform-origin: center bottom;
+  background: linear-gradient(
+    0deg,
+    rgba(255, 95, 145, 0.92) 0%,
+    rgba(255, 175, 205, 0.5) 36%,
+    transparent 100%
+  );
+}
+
+.edge-shockwave::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  animation: edgeShockFlash 0.42s ease-out forwards;
+}
+
+.edge-from-left::after {
+  background: linear-gradient(90deg, rgba(255, 120, 165, 0.28) 0%, transparent 48%);
+}
+
+.edge-from-right::after {
+  background: linear-gradient(270deg, rgba(255, 120, 165, 0.28) 0%, transparent 48%);
+}
+
+.edge-from-up::after {
+  background: linear-gradient(180deg, rgba(255, 120, 165, 0.28) 0%, transparent 48%);
+}
+
+.edge-from-down::after {
+  background: linear-gradient(0deg, rgba(255, 120, 165, 0.28) 0%, transparent 48%);
+}
+
+.edge-shockwave-ring {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 215, 230, 0.82);
+  opacity: 0;
+}
+
+.edge-from-left .edge-shockwave-ring {
+  top: 50%;
+  left: 0;
+  width: 36vmax;
+  height: 130vmax;
+  margin-top: -65vmax;
+  transform-origin: left center;
+  animation: edgeRingFromLeft 0.62s cubic-bezier(0.16, 0.84, 0.32, 1) forwards;
+}
+
+.edge-from-right .edge-shockwave-ring {
+  top: 50%;
+  right: 0;
+  width: 36vmax;
+  height: 130vmax;
+  margin-top: -65vmax;
+  transform-origin: right center;
+  animation: edgeRingFromRight 0.62s cubic-bezier(0.16, 0.84, 0.32, 1) forwards;
+}
+
+.edge-from-up .edge-shockwave-ring {
+  top: 0;
+  left: 50%;
+  width: 130vmax;
+  height: 36vmax;
+  margin-left: -65vmax;
+  transform-origin: center top;
+  animation: edgeRingFromUp 0.62s cubic-bezier(0.16, 0.84, 0.32, 1) forwards;
+}
+
+.edge-from-down .edge-shockwave-ring {
+  bottom: 0;
+  left: 50%;
+  width: 130vmax;
+  height: 36vmax;
+  margin-left: -65vmax;
+  transform-origin: center bottom;
+  animation: edgeRingFromDown 0.62s cubic-bezier(0.16, 0.84, 0.32, 1) forwards;
+}
+
+.edge-shockwave-ring-delay {
+  animation-delay: 0.08s;
+}
+
+@keyframes edgeShockGlowX {
+  0% { opacity: 1; transform: scaleX(0.35) scaleY(1); }
+  100% { opacity: 0; transform: scaleX(1.15) scaleY(1.05); }
+}
+
+@keyframes edgeShockGlowY {
+  0% { opacity: 1; transform: scaleY(0.35) scaleX(1); }
+  100% { opacity: 0; transform: scaleY(1.15) scaleX(1.05); }
+}
+
+.edge-from-up::before,
+.edge-from-down::before {
+  animation-name: edgeShockGlowY;
+}
+
+@keyframes edgeShockFlash {
+  0% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+@keyframes edgeRingFromLeft {
+  0% { opacity: 0.92; transform: scale(0.06); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes edgeRingFromRight {
+  0% { opacity: 0.92; transform: scale(0.06); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes edgeRingFromUp {
+  0% { opacity: 0.92; transform: scale(0.06); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes edgeRingFromDown {
+  0% { opacity: 0.92; transform: scale(0.06); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+.gallery-stage.shockwave-shake-left {
+  animation: shockwaveShakeLeft 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.gallery-stage.shockwave-shake-right {
+  animation: shockwaveShakeRight 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.gallery-stage.shockwave-shake-up {
+  animation: shockwaveShakeUp 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.gallery-stage.shockwave-shake-down {
+  animation: shockwaveShakeDown 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.gallery-stage.shockwave-shake-mid {
+  animation-duration: 0.48s;
+}
+
+.gallery-stage.shockwave-shake-strong {
+  animation-duration: 0.56s;
+}
+
+.gallery-stage.shockwave-shake-mid.shockwave-shake-left {
+  animation-name: shockwaveShakeLeftMid;
+}
+
+.gallery-stage.shockwave-shake-strong.shockwave-shake-left {
+  animation-name: shockwaveShakeLeftStrong;
+}
+
+.gallery-stage.shockwave-shake-mid.shockwave-shake-right {
+  animation-name: shockwaveShakeRightMid;
+}
+
+.gallery-stage.shockwave-shake-strong.shockwave-shake-right {
+  animation-name: shockwaveShakeRightStrong;
+}
+
+.gallery-stage.shockwave-shake-mid.shockwave-shake-up {
+  animation-name: shockwaveShakeUpMid;
+}
+
+.gallery-stage.shockwave-shake-strong.shockwave-shake-up {
+  animation-name: shockwaveShakeUpStrong;
+}
+
+.gallery-stage.shockwave-shake-mid.shockwave-shake-down {
+  animation-name: shockwaveShakeDownMid;
+}
+
+.gallery-stage.shockwave-shake-strong.shockwave-shake-down {
+  animation-name: shockwaveShakeDownStrong;
+}
+
+@keyframes shockwaveShakeLeft {
+  0%, 100% { transform: translate(0, 0); }
+  14% { transform: translate(10px, -3px); }
+  32% { transform: translate(-7px, 3px); }
+  50% { transform: translate(5px, -2px); }
+  68% { transform: translate(-3px, 1px); }
+}
+
+@keyframes shockwaveShakeRight {
+  0%, 100% { transform: translate(0, 0); }
+  14% { transform: translate(-10px, 3px); }
+  32% { transform: translate(7px, -3px); }
+  50% { transform: translate(-5px, 2px); }
+  68% { transform: translate(3px, -1px); }
+}
+
+@keyframes shockwaveShakeUp {
+  0%, 100% { transform: translate(0, 0); }
+  14% { transform: translate(-3px, 10px); }
+  32% { transform: translate(3px, -7px); }
+  50% { transform: translate(-2px, 5px); }
+  68% { transform: translate(1px, -3px); }
+}
+
+@keyframes shockwaveShakeDown {
+  0%, 100% { transform: translate(0, 0); }
+  14% { transform: translate(3px, -10px); }
+  32% { transform: translate(-3px, 7px); }
+  50% { transform: translate(2px, -5px); }
+  68% { transform: translate(-1px, 3px); }
+}
+
+@keyframes shockwaveShakeLeftMid {
+  0%, 100% { transform: translate(0, 0); }
+  14% { transform: translate(14px, -4px); }
+  32% { transform: translate(-10px, 5px); }
+  50% { transform: translate(8px, -3px); }
+  68% { transform: translate(-5px, 2px); }
+}
+
+@keyframes shockwaveShakeLeftStrong {
+  0%, 100% { transform: translate(0, 0); }
+  12% { transform: translate(20px, -6px); }
+  28% { transform: translate(-14px, 7px); }
+  44% { transform: translate(12px, -5px); }
+  60% { transform: translate(-8px, 4px); }
+  76% { transform: translate(5px, -2px); }
+}
+
+@keyframes shockwaveShakeRightMid {
+  0%, 100% { transform: translate(0, 0); }
+  14% { transform: translate(-14px, 4px); }
+  32% { transform: translate(10px, -5px); }
+  50% { transform: translate(-8px, 3px); }
+  68% { transform: translate(5px, -2px); }
+}
+
+@keyframes shockwaveShakeRightStrong {
+  0%, 100% { transform: translate(0, 0); }
+  12% { transform: translate(-20px, 6px); }
+  28% { transform: translate(14px, -7px); }
+  44% { transform: translate(-12px, 5px); }
+  60% { transform: translate(8px, -4px); }
+  76% { transform: translate(-5px, 2px); }
+}
+
+@keyframes shockwaveShakeUpMid {
+  0%, 100% { transform: translate(0, 0); }
+  14% { transform: translate(-3px, 14px); }
+  32% { transform: translate(3px, -10px); }
+  50% { transform: translate(-2px, 7px); }
+  68% { transform: translate(1px, -4px); }
+}
+
+@keyframes shockwaveShakeUpStrong {
+  0%, 100% { transform: translate(0, 0); }
+  12% { transform: translate(-5px, 20px); }
+  28% { transform: translate(5px, -14px); }
+  44% { transform: translate(-3px, 11px); }
+  60% { transform: translate(2px, -7px); }
+  76% { transform: translate(-1px, 4px); }
+}
+
+@keyframes shockwaveShakeDownMid {
+  0%, 100% { transform: translate(0, 0); }
+  14% { transform: translate(3px, -14px); }
+  32% { transform: translate(-3px, 10px); }
+  50% { transform: translate(2px, -7px); }
+  68% { transform: translate(-1px, 4px); }
+}
+
+@keyframes shockwaveShakeDownStrong {
+  0%, 100% { transform: translate(0, 0); }
+  12% { transform: translate(5px, -20px); }
+  28% { transform: translate(-5px, 14px); }
+  44% { transform: translate(3px, -11px); }
+  60% { transform: translate(-2px, 7px); }
+  76% { transform: translate(1px, -4px); }
+}
+
 .formation-glyph-wrap {
   position: fixed;
   z-index: 16;
@@ -1310,7 +1755,16 @@ body {
   .drop-icon::after,
   .formation-burst-flash,
   .formation-burst-ring,
-  .formation-glyph-wrap {
+  .formation-glyph-wrap,
+  .edge-shockwave::before,
+  .edge-shockwave::after,
+  .edge-shockwave-ring,
+  .edge-shockwave-sustain::before,
+  .edge-shockwave-sustain-flash,
+  .gallery-stage.shockwave-shake-left,
+  .gallery-stage.shockwave-shake-right,
+  .gallery-stage.shockwave-shake-up,
+  .gallery-stage.shockwave-shake-down {
     animation: none !important;
   }
 

@@ -41,6 +41,13 @@
   const BURST_MAX_PARTICLES = 520;
   const BURST_MAX_PARTICLES_REDUCED = 220;
   const BURST_MIN_HEAVY_PHOTOS = 5;
+  const SHOCKWAVE_FORCE = 680;
+  const SHOCKWAVE_FORCE_REDUCED = 460;
+  const SHOCKWAVE_MAX_SPEED = 1020;
+  const SHOCKWAVE_RAMP_RATE = 1.08;
+  const SHOCKWAVE_MAX_INTENSITY = 4.6;
+  const SHOCKWAVE_WIND_FORCE = 540;
+  const SHOCKWAVE_WIND_FORCE_REDUCED = 360;
 
   let trails = [];
 
@@ -79,6 +86,27 @@
   let rulesBubbleLocked = false;
   let quoteIndex = 0;
   let formationBurstCooldownUntil = 0;
+  let shockwaveHoldDir = null;
+  let shockwaveHoldStart = 0;
+  let shockwaveIntensity = 1;
+  let shockwaveLastPulseAt = 0;
+  let shockwaveSustainEl = null;
+  let shockwaveFlashEl = null;
+
+  const ARROW_DIRECTIONS = {
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+  };
+
+  // 冲击波从对侧边缘扫入，把照片往按键方向吹
+  const SHOCKWAVE_VISUAL_EDGE = {
+    left: 'right',
+    right: 'left',
+    up: 'down',
+    down: 'up',
+  };
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -892,11 +920,11 @@
     });
   }
 
-  function capSpeed(p) {
+  function capSpeed(p, maxSpeed = MAX_SPEED) {
     const speed = Math.hypot(p.vx, p.vy);
-    if (speed > MAX_SPEED) {
-      p.vx = (p.vx / speed) * MAX_SPEED;
-      p.vy = (p.vy / speed) * MAX_SPEED;
+    if (speed > maxSpeed) {
+      p.vx = (p.vx / speed) * maxSpeed;
+      p.vy = (p.vy / speed) * maxSpeed;
     }
   }
 
@@ -1092,6 +1120,7 @@
     prevMouseY = mouseY;
 
     if (getSimPhotos().length) physicsStep(dt);
+    updateShockwaveHold(dt, now);
     updateTrails(dt);
     renderTrails();
     animId = requestAnimationFrame(tick);
@@ -1103,9 +1132,14 @@
     requestAnimationFrame(tick);
   }
 
-  function exitFormationMode() {
+  function exitFormationMode(options = {}) {
     formationMode = null;
     removeFormationClones();
+    getSimPhotos().forEach((p) => {
+      p.scale = 1;
+    });
+    if (options.skipImpulse) return;
+
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
     getSimPhotos().forEach((p) => {
@@ -1114,8 +1148,223 @@
       const dist = Math.hypot(dx, dy) || 1;
       p.vx += (dx / dist) * 180;
       p.vy += (dy / dist) * 180;
-      p.scale = 1;
     });
+  }
+
+  function getShockwaveVector(dir) {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    switch (dir) {
+      case 'left':
+        return { nx: -1, ny: 0, edgeX: 0, edgeY: h / 2, span: h };
+      case 'right':
+        return { nx: 1, ny: 0, edgeX: w, edgeY: h / 2, span: h };
+      case 'up':
+        return { nx: 0, ny: -1, edgeX: w / 2, edgeY: 0, span: w };
+      case 'down':
+        return { nx: 0, ny: 1, edgeX: w / 2, edgeY: h, span: w };
+      default:
+        return null;
+    }
+  }
+
+  function getShockwaveVisualEdge(blowDir) {
+    return SHOCKWAVE_VISUAL_EDGE[blowDir] || null;
+  }
+
+  function getShockwaveAlignment(dir, p, w, h) {
+    if (dir === 'right') return 0.62 + (1 - p.x / w) * 0.48;
+    if (dir === 'left') return 0.62 + (p.x / w) * 0.48;
+    if (dir === 'up') return 0.62 + (p.y / h) * 0.48;
+    if (dir === 'down') return 0.62 + (1 - p.y / h) * 0.48;
+    return 0.78;
+  }
+
+  function getShockwaveMaxSpeed(intensity) {
+    return Math.min(1680, SHOCKWAVE_MAX_SPEED * (0.88 + intensity * 0.22));
+  }
+
+  function removeShockwaveSustainVisual() {
+    if (shockwaveSustainEl) {
+      shockwaveSustainEl.remove();
+      shockwaveSustainEl = null;
+    }
+    if (shockwaveFlashEl) {
+      shockwaveFlashEl.remove();
+      shockwaveFlashEl = null;
+    }
+    if (stage) stage.style.removeProperty('transform');
+  }
+
+  function createShockwaveSustainVisual(blowDir) {
+    removeShockwaveSustainVisual();
+    const visualEdge = getShockwaveVisualEdge(blowDir);
+    if (!visualEdge) return;
+
+    shockwaveSustainEl = document.createElement('div');
+    shockwaveSustainEl.className = `edge-shockwave-sustain edge-from-${visualEdge}`;
+    effectsLayer.appendChild(shockwaveSustainEl);
+
+    shockwaveFlashEl = document.createElement('div');
+    shockwaveFlashEl.className = `edge-shockwave-sustain-flash edge-from-${visualEdge}`;
+    effectsLayer.appendChild(shockwaveFlashEl);
+    updateShockwaveSustainVisual(1);
+  }
+
+  function updateShockwaveSustainVisual(intensity) {
+    const norm = clamp((intensity - 1) / (SHOCKWAVE_MAX_INTENSITY - 1), 0, 1);
+    const visual = (0.24 + norm * 0.76).toFixed(3);
+
+    if (shockwaveSustainEl) {
+      shockwaveSustainEl.style.setProperty('--sw-i', visual);
+      shockwaveSustainEl.classList.toggle('sw-intense', intensity >= 2.6);
+      shockwaveSustainEl.classList.toggle('sw-max', intensity >= 3.8);
+    }
+    if (shockwaveFlashEl) {
+      shockwaveFlashEl.style.setProperty('--sw-i', (norm * 0.38).toFixed(3));
+    }
+  }
+
+  function spawnEdgeShockwaveVisual(blowDir, intensity = 1) {
+    const visualEdge = getShockwaveVisualEdge(blowDir);
+    if (!visualEdge) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = `edge-shockwave edge-from-${visualEdge} edge-shockwave-pulse`;
+    const pulse = Math.min(1.55, 0.72 + intensity * 0.18);
+    wrap.style.setProperty('--sw-pulse', pulse.toFixed(2));
+    effectsLayer.appendChild(wrap);
+
+    const ringCount = 1;
+    for (let i = 0; i < ringCount; i++) {
+      const ring = document.createElement('div');
+      ring.className = 'edge-shockwave-ring';
+      if (i) ring.classList.add('edge-shockwave-ring-delay');
+      wrap.appendChild(ring);
+    }
+
+    window.setTimeout(() => wrap.remove(), Math.max(420, 720 / pulse));
+  }
+
+  function triggerScreenShake(dir, intensity = 1) {
+    if (!stage) return;
+    const tier = intensity >= 3.4 ? 'strong' : intensity >= 2 ? 'mid' : 'light';
+    const cls = `shockwave-shake-${dir} shockwave-shake-${tier}`;
+    stage.classList.remove(
+      'shockwave-shake-left',
+      'shockwave-shake-right',
+      'shockwave-shake-up',
+      'shockwave-shake-down',
+      'shockwave-shake-light',
+      'shockwave-shake-mid',
+      'shockwave-shake-strong'
+    );
+    void stage.offsetWidth;
+    stage.classList.add(`shockwave-shake-${dir}`, `shockwave-shake-${tier}`);
+    const duration = intensity >= 3 ? 520 : intensity >= 2 ? 440 : reducedMotion ? 240 : 360;
+    window.setTimeout(() => {
+      stage.classList.remove(`shockwave-shake-${dir}`, `shockwave-shake-${tier}`);
+      if (!shockwaveHoldDir) stage.style.removeProperty('transform');
+    }, duration);
+  }
+
+  function applyShockwaveImpulse(dir, intensity = 1) {
+    const vec = getShockwaveVector(dir);
+    if (!vec) return;
+
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const baseForce = (reducedMotion ? SHOCKWAVE_FORCE_REDUCED : SHOCKWAVE_FORCE) * intensity;
+    const spin = (reducedMotion ? 140 : 260) * Math.min(intensity, 2.2);
+    const maxSpeed = getShockwaveMaxSpeed(intensity);
+
+    getSimPhotos().forEach((p) => {
+      const alignment = getShockwaveAlignment(dir, p, w, h);
+      const force = baseForce * alignment * (0.9 + Math.random() * 0.18);
+      p.vx += vec.nx * force;
+      p.vy += vec.ny * force;
+      p.vx += (Math.random() - 0.5) * force * 0.08;
+      p.vy += (Math.random() - 0.5) * force * 0.08;
+      p.va += (Math.random() - 0.5) * spin;
+      p.scale = Math.min(1.08 + intensity * 0.025, Math.max(p.scale, 1.03 + intensity * 0.012));
+      capSpeed(p, maxSpeed);
+    });
+  }
+
+  function applyShockwaveWind(dir, dt, intensity) {
+    const vec = getShockwaveVector(dir);
+    if (!vec) return;
+
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const windBase = (reducedMotion ? SHOCKWAVE_WIND_FORCE_REDUCED : SHOCKWAVE_WIND_FORCE) * intensity;
+    const spin = 48 * intensity * dt;
+    const maxSpeed = getShockwaveMaxSpeed(intensity);
+
+    getSimPhotos().forEach((p) => {
+      const alignment = getShockwaveAlignment(dir, p, w, h);
+      const force = windBase * alignment * dt;
+      p.vx += vec.nx * force;
+      p.vy += vec.ny * force;
+      p.va += (Math.random() - 0.5) * spin;
+      capSpeed(p, maxSpeed);
+    });
+  }
+
+  function beginShockwaveHold(dir) {
+    if (!getShockwaveVector(dir)) return;
+    if (formationBursting || !getSimPhotos().length) return;
+    if (shockwaveHoldDir === dir) return;
+
+    if (isFormationActive()) exitFormationMode({ skipImpulse: true });
+
+    shockwaveHoldDir = dir;
+    shockwaveHoldStart = performance.now();
+    shockwaveIntensity = 1;
+    shockwaveLastPulseAt = 0;
+
+    createShockwaveSustainVisual(dir);
+    applyShockwaveImpulse(dir, 1);
+    triggerScreenShake(dir, 1);
+    spawnEdgeShockwaveVisual(dir, 1);
+  }
+
+  function endShockwaveHold() {
+    shockwaveHoldDir = null;
+    shockwaveHoldStart = 0;
+    shockwaveIntensity = 1;
+    shockwaveLastPulseAt = 0;
+    removeShockwaveSustainVisual();
+  }
+
+  function updateShockwaveHold(dt, now) {
+    if (!shockwaveHoldDir || formationBursting) return;
+
+    shockwaveIntensity = Math.min(
+      SHOCKWAVE_MAX_INTENSITY,
+      1 + ((now - shockwaveHoldStart) / 1000) * SHOCKWAVE_RAMP_RATE
+    );
+
+    applyShockwaveWind(shockwaveHoldDir, dt, shockwaveIntensity);
+    updateShockwaveSustainVisual(shockwaveIntensity);
+
+    if (shockwaveIntensity >= 2.1 && stage) {
+      const rumble = (shockwaveIntensity - 2.1) * 1.15;
+      const ox = (Math.random() - 0.5) * rumble * 2.4;
+      const oy = (Math.random() - 0.5) * rumble * 2.4;
+      if (!stage.classList.contains(`shockwave-shake-${shockwaveHoldDir}`)) {
+        stage.style.transform = `translate(${ox.toFixed(2)}px, ${oy.toFixed(2)}px)`;
+      }
+    }
+
+    const pulseInterval = Math.max(180, 560 - shockwaveIntensity * 88);
+    if (now - shockwaveLastPulseAt >= pulseInterval) {
+      spawnEdgeShockwaveVisual(shockwaveHoldDir, shockwaveIntensity);
+      if (shockwaveIntensity >= 1.55) {
+        triggerScreenShake(shockwaveHoldDir, shockwaveIntensity);
+      }
+      shockwaveLastPulseAt = now;
+    }
   }
 
   function setFormationMode(mode) {
@@ -1305,6 +1554,13 @@
         return;
       }
 
+      const arrowDir = ARROW_DIRECTIONS[e.code];
+      if (arrowDir) {
+        e.preventDefault();
+        beginShockwaveHold(arrowDir);
+        return;
+      }
+
       if (e.repeat) return;
 
       if (e.code === 'Space') {
@@ -1333,6 +1589,13 @@
         return;
       }
 
+      const arrowDir = ARROW_DIRECTIONS[e.code];
+      if (arrowDir) {
+        e.preventDefault();
+        if (shockwaveHoldDir === arrowDir) endShockwaveHold();
+        return;
+      }
+
       if (!isMatchingFormationKey(e)) return;
       e.preventDefault();
       exitFormationMode();
@@ -1340,6 +1603,7 @@
 
     window.addEventListener('blur', () => {
       if (formationMode) exitFormationMode();
+      endShockwaveHold();
     });
 
     document.addEventListener('mousedown', (e) => {
