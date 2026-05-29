@@ -796,6 +796,45 @@ body {
   box-shadow: var(--shadow-glow);
 }
 
+.btn-sound-toggle {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--rose-deep);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft), 0 0 20px rgba(230, 160, 185, 0.15);
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s, opacity 0.3s;
+  font-family: var(--font-body);
+}
+
+.btn-sound-toggle:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.08);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-sound-toggle:active {
+  transform: scale(0.95);
+}
+
+.btn-sound-toggle.is-muted {
+  opacity: 0.55;
+  color: var(--text-soft);
+}
+
+.btn-sound-toggle-upload {
+  width: 38px;
+  height: 38px;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
 .rules-bubble {
   position: absolute;
   top: 46px;

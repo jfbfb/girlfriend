@@ -25,6 +25,7 @@
 
   <!-- 右上角控制区 -->
   <div class="top-controls" id="topControls">
+    <button type="button" class="btn-sound-toggle" data-sound-toggle aria-pressed="true" title="关闭音效" aria-label="关闭音效">♪</button>
     <button type="button" class="btn-add-photo" id="addPhotoBtn" title="添加照片" aria-label="添加照片">+</button>
     <button type="button" class="btn-remove-photo" id="removePhotoBtn" title="删除照片" aria-label="删除照片">−</button>
     <button type="button" class="btn-rules" id="rulesBtn" title="规则说明" aria-label="规则说明">规则</button>
@@ -73,6 +74,7 @@
         <li>按住形状键时<strong>左键点击</strong>：照片炸裂成烟花，中央浮现对应图案，约 2 秒后消失。</li>
         <li>自由状态下左键点击照片会触发烟花和情话，几秒后会重生同款照片。</li>
         <li>按住 <strong>↑ ↓ ← →</strong>：对侧冲击波持续加压，照片越吹越猛，松手停止（约 3 秒达到最强）。</li>
+        <li>右上角 <strong>♪</strong> 可开关音效。</li>
         <li>右上角 <strong>−</strong> 可打开照片管理，删除已添加的照片。</li>
       </ul>
       <button type="button" class="rules-close" id="rulesCloseBtn">我知道啦</button>
@@ -82,6 +84,7 @@
   <script src="js/heart-rain.js"></script>
   <script src="js/shape-points.js"></script>
   <script src="js/db.js"></script>
+  <script src="js/romance-audio.js"></script>
   <script src="js/gallery.js"></script>
 </body>
 </html>

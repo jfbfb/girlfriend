@@ -133,6 +133,7 @@
   function dismissIntro() {
     if (introDone) return;
     introDone = true;
+    if (window.RomanceAudio) window.RomanceAudio.playIntro();
     if (!photos.length) {
       introOverlay.hidden = true;
       return;
@@ -710,6 +711,7 @@
     });
 
     showFormationGlyph(displayChar, bounds, burstX, burstY);
+    if (window.RomanceAudio) window.RomanceAudio.playFormationBurst();
 
     setTimeout(() => {
       formationBursting = false;
@@ -787,6 +789,10 @@
 
     spawnFireworks(x, y, imageUrl);
     const quoteEl = showLoveQuote(nextQuote());
+    if (window.RomanceAudio) {
+      window.RomanceAudio.playFirework();
+      window.RomanceAudio.playLoveQuote();
+    }
 
     const idx = photos.indexOf(photo);
     if (idx !== -1) photos.splice(idx, 1);
@@ -814,6 +820,7 @@
       scale: 0.2,
     });
     photos.push(photo);
+    if (window.RomanceAudio) window.RomanceAudio.playRespawn();
     requestAnimationFrame(() => {
       photo.scale = 1;
     });
@@ -962,7 +969,13 @@
     dist = Math.max(dist, 0.001);
     const overlap = minDist - dist;
     separateCircles(a, b, nx, ny, overlap);
+    const rvx = b.vx - a.vx;
+    const rvy = b.vy - a.vy;
+    const velN = rvx * nx + rvy * ny;
     applyImpulse(a, b, nx, ny, RESTITUTION);
+    if (overlap > 3 && velN < -30 && window.RomanceAudio) {
+      window.RomanceAudio.playBump(Math.min(1, Math.abs(velN) / 420));
+    }
     a.va += overlap * 0.02;
     b.va -= overlap * 0.02;
   }
@@ -998,6 +1011,10 @@
     }
 
     const mouseSpeed = Math.hypot(mouseVx, mouseVy);
+    if (overlap > 2 && mouseSpeed > 35 && window.RomanceAudio) {
+      window.RomanceAudio.playPop(Math.min(1, mouseSpeed / 320 + overlap / p.radius * 0.2));
+    }
+
     p.vx += nx * (mouseSpeed * 0.55 + overlap * 120);
     p.vy += ny * (mouseSpeed * 0.55 + overlap * 120);
     p.va += mouseSpeed * 0.03 * (Math.random() > 0.5 ? 1 : -1);
@@ -1011,19 +1028,31 @@
 
     if (p.x - r < MARGIN) {
       p.x = MARGIN + r;
-      if (p.vx < 0) p.vx = -p.vx * WALL_RESTITUTION;
+      if (p.vx < 0) {
+        if (window.RomanceAudio) window.RomanceAudio.playWall(Math.min(1, Math.abs(p.vx) / 500));
+        p.vx = -p.vx * WALL_RESTITUTION;
+      }
     }
     if (p.x + r > w - MARGIN) {
       p.x = w - MARGIN - r;
-      if (p.vx > 0) p.vx = -p.vx * WALL_RESTITUTION;
+      if (p.vx > 0) {
+        if (window.RomanceAudio) window.RomanceAudio.playWall(Math.min(1, Math.abs(p.vx) / 500));
+        p.vx = -p.vx * WALL_RESTITUTION;
+      }
     }
     if (p.y - r < MARGIN) {
       p.y = MARGIN + r;
-      if (p.vy < 0) p.vy = -p.vy * WALL_RESTITUTION;
+      if (p.vy < 0) {
+        if (window.RomanceAudio) window.RomanceAudio.playWall(Math.min(1, Math.abs(p.vy) / 500));
+        p.vy = -p.vy * WALL_RESTITUTION;
+      }
     }
     if (p.y + r > h - MARGIN) {
       p.y = h - MARGIN - r;
-      if (p.vy > 0) p.vy = -p.vy * WALL_RESTITUTION;
+      if (p.vy > 0) {
+        if (window.RomanceAudio) window.RomanceAudio.playWall(Math.min(1, Math.abs(p.vy) / 500));
+        p.vy = -p.vy * WALL_RESTITUTION;
+      }
     }
   }
 
@@ -1327,6 +1356,10 @@
     applyShockwaveImpulse(dir, 1);
     triggerScreenShake(dir, 1);
     spawnEdgeShockwaveVisual(dir, 1);
+    if (window.RomanceAudio) {
+      window.RomanceAudio.playShockwaveStart();
+      window.RomanceAudio.startShockwaveWind(dir, 1);
+    }
   }
 
   function endShockwaveHold() {
@@ -1335,6 +1368,7 @@
     shockwaveIntensity = 1;
     shockwaveLastPulseAt = 0;
     removeShockwaveSustainVisual();
+    if (window.RomanceAudio) window.RomanceAudio.stopShockwaveWind();
   }
 
   function updateShockwaveHold(dt, now) {
@@ -1347,6 +1381,7 @@
 
     applyShockwaveWind(shockwaveHoldDir, dt, shockwaveIntensity);
     updateShockwaveSustainVisual(shockwaveIntensity);
+    if (window.RomanceAudio) window.RomanceAudio.updateShockwaveWind(shockwaveIntensity);
 
     if (shockwaveIntensity >= 2.1 && stage) {
       const rumble = (shockwaveIntensity - 2.1) * 1.15;
@@ -1362,6 +1397,7 @@
       spawnEdgeShockwaveVisual(shockwaveHoldDir, shockwaveIntensity);
       if (shockwaveIntensity >= 1.55) {
         triggerScreenShake(shockwaveHoldDir, shockwaveIntensity);
+        if (window.RomanceAudio) window.RomanceAudio.playShockwavePulse(shockwaveIntensity);
       }
       shockwaveLastPulseAt = now;
     }
@@ -1372,6 +1408,7 @@
 
     formationMode = mode;
     prepareFormation();
+    if (window.RomanceAudio) window.RomanceAudio.playFormationEnter();
   }
 
   function updateRulesBubble(clientX, clientY) {
@@ -1449,6 +1486,7 @@
       btn.textContent = '×';
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (window.RomanceAudio) window.RomanceAudio.playUiClick();
         handleDeletePhoto(photo.id, item);
       });
 
@@ -1524,6 +1562,15 @@
     if (isLetterKey(e.code) || isDigitKey(e.code)) return e.code;
     if (/^[0-9]$/.test(char)) return `Digit${char}`;
     return e.code;
+  }
+
+  function bindUiSounds() {
+    if (!window.RomanceAudio) return;
+    document.querySelectorAll(
+      '.top-controls button:not([data-sound-toggle]), .intro-skip, .photo-manage-close, .rules-close'
+    ).forEach((btn) => {
+      btn.addEventListener('click', () => window.RomanceAudio.playUiClick(), { capture: true });
+    });
   }
 
   function bindInput() {
@@ -1655,6 +1702,7 @@
       if (!introDone && photos.length && !reducedMotion) {
         setTimeout(dismissIntro, 2800);
       }
+      if (window.RomanceAudio) window.RomanceAudio.playUploadAdd();
     } catch (err) {
       console.error(err);
       alert('添加失败，请重试');
@@ -1732,6 +1780,7 @@
 
   async function init() {
     bindInput();
+    bindUiSounds();
     resizeTrailCanvas();
     startPhysics();
     window.addEventListener('resize', onResize);

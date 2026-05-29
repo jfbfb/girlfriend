@@ -39,6 +39,7 @@
       }
     });
     renderPreview();
+    if (window.RomanceAudio) window.RomanceAudio.playUploadAdd();
   }
 
   function removeFile(file) {
@@ -69,6 +70,7 @@
       removeBtn.textContent = '×';
       removeBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        if (window.RomanceAudio) window.RomanceAudio.playUiClick();
         removeFile(file);
       });
 
@@ -111,6 +113,7 @@
 
     try {
       await savePhotos(selectedFiles);
+      if (window.RomanceAudio) window.RomanceAudio.playConfirm();
       window.location.href = 'gallery.html';
     } catch (err) {
       console.error(err);
